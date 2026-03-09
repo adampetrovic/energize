@@ -1,0 +1,10 @@
+node_modules
+.jj
+.git
+.pi
+.env
+*.md
+docs/
+data.csv
+optimize.py
+test-battery.js
