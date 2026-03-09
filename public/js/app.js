@@ -131,22 +131,88 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   const compOverlay = document.getElementById('comparison-overlay');
   const compDrawer = document.getElementById('comparison-drawer');
-  document.getElementById('add-comparison-btn').addEventListener('click', () => {
+
+  function ensureComparisonEditor(plan) {
     if (!comparisonEditor) {
-      comparisonEditor = new TariffEditor('comparison-editor-container', POWERSHOP_EV_DAY_PLAN);
+      comparisonEditor = new TariffEditor('comparison-editor-container', plan || EMPTY_PLAN);
+    } else {
+      comparisonEditor.setPlan(plan || EMPTY_PLAN);
     }
+  }
+
+  document.getElementById('add-comparison-btn').addEventListener('click', () => {
+    ensureComparisonEditor(comparisonPlan || null);
+    // Load saved plans into picker
+    loadSavedPlansIntoPicker();
     openDrawer(compDrawer, compOverlay);
   });
   document.getElementById('comparison-close').addEventListener('click', () => closeDrawer(compDrawer, compOverlay));
   compOverlay.addEventListener('click', () => closeDrawer(compDrawer, compOverlay));
+
   // Plan picker
   const compPicker = document.getElementById('comparison-plan-picker');
   if (compPicker) {
     compPicker.addEventListener('change', () => {
       const plan = COMPARISON_PLANS[compPicker.value];
-      if (plan && comparisonEditor) comparisonEditor.setPlan(plan);
+      if (plan) ensureComparisonEditor(plan);
     });
   }
+
+  // EME Import
+  document.getElementById('eme-import-btn').addEventListener('click', async () => {
+    const planId = document.getElementById('eme-plan-id').value.trim();
+    const postcode = document.getElementById('eme-postcode').value.trim();
+    const status = document.getElementById('eme-import-status');
+    if (!planId || !postcode) { status.textContent = '⚠ Plan ID and postcode required'; return; }
+    status.textContent = '⏳ Importing...';
+    try {
+      const { plan } = await API.importEmePlan(planId, postcode);
+      ensureComparisonEditor(plan);
+      status.textContent = '✅ Imported: ' + plan.name;
+      // Try to save to DB
+      const slug = planId.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      API.savePlan(slug, plan.name, plan, 'eme', planId, postcode).catch(() => {});
+      // Add to picker dynamically
+      addSavedPlanOption(slug, plan.name);
+    } catch (err) {
+      status.textContent = '❌ ' + err.message;
+    }
+  });
+
+  async function loadSavedPlansIntoPicker() {
+    try {
+      const plans = await API.listPlans();
+      const picker = document.getElementById('comparison-plan-picker');
+      // Remove old saved-plan options
+      picker.querySelectorAll('option[data-saved]').forEach(o => o.remove());
+      for (const p of plans) {
+        addSavedPlanOption(p.slug, p.name);
+      }
+    } catch {}
+  }
+
+  function addSavedPlanOption(slug, name) {
+    const picker = document.getElementById('comparison-plan-picker');
+    if (picker.querySelector(`option[value="saved:${slug}"]`)) return;
+    const opt = document.createElement('option');
+    opt.value = 'saved:' + slug;
+    opt.textContent = '💾 ' + name;
+    opt.dataset.saved = '1';
+    picker.insertBefore(opt, picker.querySelector('option[value="empty"]'));
+  }
+
+  // Handle loading saved plans from picker
+  compPicker?.addEventListener('change', async () => {
+    const val = compPicker.value;
+    if (val.startsWith('saved:')) {
+      const slug = val.replace('saved:', '');
+      try {
+        const saved = await API.loadPlan(slug);
+        if (saved?.plan_data) ensureComparisonEditor(saved.plan_data);
+      } catch {}
+    }
+  });
+
   document.getElementById('comparison-apply').addEventListener('click', () => {
     comparisonPlan = comparisonEditor.getPlan();
     closeDrawer(compDrawer, compOverlay);

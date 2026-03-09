@@ -662,7 +662,25 @@ main {
 .drawer-field input:focus,
 .drawer-field select:focus { border-color: var(--accent); }
 .drawer-field input[type="number"] { width: 100px; }
-.drawer-divider { border: none; border-top: 1px solid var(--border); margin: 1rem 0 0.5rem; }
+.drawer-divider { border: none; border-top: 1px solid var(--border); margin: 0.75rem 0 0.5rem; }
+
+/* ── Import Section ── */
+.import-section { margin-bottom: 0.25rem; }
+.import-toggle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0.25rem 0;
+  list-style: none;
+}
+.import-toggle::-webkit-details-marker { display: none; }
+.import-toggle::before { content: '▸ '; font-size: 0.65rem; }
+details[open] > .import-toggle::before { content: '▾ '; }
+.import-form { padding: 0.5rem 0 0; }
+.import-row { display: flex; gap: 0.5rem; align-items: flex-end; }
+.import-row .drawer-field { margin-bottom: 0; }
+.btn-sm { padding: 0.4rem 0.75rem; font-size: 0.72rem; }
 .drawer-section-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin: 0.5rem 0; }
 .drawer-hint { font-size: 0.65rem; color: var(--text-muted); margin-top: 0.25rem; line-height: 1.4; }
 

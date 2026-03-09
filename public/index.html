@@ -294,12 +294,36 @@
       <button class="drawer-close" id="comparison-close">&times;</button>
     </div>
     <div class="drawer-body">
-      <div class="drawer-field" style="margin-bottom:1rem;padding:0 1.25rem">
-        <label>Load a plan</label>
-        <select id="comparison-plan-picker">
-          <option value="powershop-ev-day" selected>Powershop EV Day</option>
-          <option value="empty">Blank Plan</option>
-        </select>
+      <div class="plan-source-tabs" style="padding:0 1.25rem 0.75rem">
+        <!-- Import from Energy Made Easy -->
+        <details class="import-section" id="eme-import-section">
+          <summary class="import-toggle">Import from Energy Made Easy</summary>
+          <div class="import-form">
+            <div class="import-row">
+              <div class="drawer-field" style="flex:2">
+                <label>Plan ID</label>
+                <input type="text" id="eme-plan-id" placeholder="e.g. OVO723791MRE17">
+              </div>
+              <div class="drawer-field" style="flex:1">
+                <label>Postcode</label>
+                <input type="text" id="eme-postcode" placeholder="2213" maxlength="4">
+              </div>
+              <button class="btn-primary btn-sm" id="eme-import-btn" style="align-self:flex-end;margin-bottom:2px">Import</button>
+            </div>
+            <p class="drawer-hint" id="eme-import-status"></p>
+            <p class="drawer-hint">Find plan IDs at <a href="https://www.energymadeeasy.gov.au" target="_blank" style="color:var(--accent)">energymadeeasy.gov.au</a> — the ID is in the plan URL.</p>
+          </div>
+        </details>
+        <hr class="drawer-divider">
+        <!-- Preset selector -->
+        <div class="drawer-field" style="margin-top:0.5rem">
+          <label>Or load a preset</label>
+          <select id="comparison-plan-picker">
+            <option value="">— Select —</option>
+            <option value="powershop-ev-day">Powershop EV Day</option>
+            <option value="empty">Blank Plan</option>
+          </select>
+        </div>
       </div>
       <div id="comparison-editor-container"></div>
     </div>
