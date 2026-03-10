@@ -55,6 +55,37 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Data management buttons
+  document.getElementById('btn-refresh-data').addEventListener('click', async () => {
+    try {
+      showLoading();
+      $loadingText.textContent = 'Re-importing from InfluxDB...';
+      await API.clearEnergyCache();
+      await loadEnergyData(true);
+      showDashboard();
+      recalculate();
+    } catch (err) {
+      showError(err.message);
+    }
+  });
+
+  document.getElementById('btn-clear-data').addEventListener('click', async () => {
+    if (!confirm('Clear cached energy data? You will need to re-import.')) return;
+    try {
+      await API.clearEnergyCache();
+      energyData = null;
+      energySource = null;
+      updateCacheStatus();
+      showLoading();
+      $loadingText.textContent = 'Cache cleared. Fetching from InfluxDB...';
+      await loadEnergyData(true);
+      showDashboard();
+      recalculate();
+    } catch (err) {
+      showError(err.message);
+    }
+  });
+
   /* ── Tariff Drawer ── */
   const tariffOverlay = document.getElementById('tariff-overlay');
   const tariffDrawer = document.getElementById('tariff-drawer');
@@ -280,7 +311,24 @@ document.addEventListener('DOMContentLoaded', () => {
     holidays = new Set(data.holidays.map(h => typeof h === 'string' ? h : h.date));
   }
 
-  async function loadEnergyData() {
+  let energySource = null; // 'cache' or 'influxdb'
+
+  async function loadEnergyData(forceRefresh = false) {
+    // Try cached data first (unless forcing refresh)
+    if (!forceRefresh) {
+      try {
+        const cached = await API.getEnergyCacheFull();
+        if (cached.cached && cached.hours?.length) {
+          energyData = cached;
+          energySource = 'cache';
+          updateCacheStatus();
+          return;
+        }
+      } catch {}
+    }
+
+    // Fall back to InfluxDB
+    $loadingText.textContent = forceRefresh ? 'Re-importing from InfluxDB...' : 'Querying 12 months of energy data...';
     const day = parseInt(billingDay.value) || 23;
     const periods = Calculator.generateBillingPeriods(day, 14);
     const complete = periods.filter(p => p.isComplete);
@@ -291,6 +339,38 @@ document.addEventListener('DOMContentLoaded', () => {
     energyData = await API.fetchHourlyEnergy(startDate, endDate);
     if (!energyData.hours || energyData.hours.length === 0) {
       throw new Error('No energy data returned');
+    }
+    energySource = 'influxdb';
+
+    // Auto-save to cache
+    try {
+      await API.saveEnergyCache('influxdb', `${startDate} to ${endDate}`, startDate, endDate, energyData.hours);
+      energySource = 'cache';
+    } catch {}
+
+    updateCacheStatus();
+  }
+
+  async function updateCacheStatus() {
+    const el = document.getElementById('energy-cache-status');
+    try {
+      const { cached, meta } = await API.getEnergyCache();
+      if (cached && meta) {
+        const imported = new Date(meta.imported_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        el.innerHTML = `
+          <div class="cache-row"><span class="cache-label">Status</span><span class="cache-badge cached">● Cached</span></div>
+          <div class="cache-row"><span class="cache-label">Source</span><span class="cache-value">${meta.source || 'influxdb'}</span></div>
+          <div class="cache-row"><span class="cache-label">Range</span><span class="cache-value">${meta.start_date || '?'} → ${meta.end_date || '?'}</span></div>
+          <div class="cache-row"><span class="cache-label">Hours</span><span class="cache-value">${(meta.hours_count || 0).toLocaleString()}</span></div>
+          <div class="cache-row"><span class="cache-label">Import</span><span class="cache-value">${Math.round(meta.total_import_kwh || 0).toLocaleString()} kWh</span></div>
+          <div class="cache-row"><span class="cache-label">Export</span><span class="cache-value">${Math.round(meta.total_export_kwh || 0).toLocaleString()} kWh</span></div>
+          <div class="cache-row"><span class="cache-label">Imported</span><span class="cache-value">${imported}</span></div>
+        `;
+      } else {
+        el.innerHTML = `<div class="cache-row"><span class="cache-label">Status</span><span class="cache-badge live">● Live from InfluxDB</span></div>`;
+      }
+    } catch {
+      el.innerHTML = `<p class="drawer-hint">No database configured</p>`;
     }
   }
 

@@ -53,6 +53,58 @@ app.get('/api/energy/hourly', async (req, res) => {
   }
 });
 
+/* ── Energy Data Cache ── */
+app.get('/api/energy/cache', async (_req, res) => {
+  try {
+    const meta = await db.getEnergyCache();
+    res.json({ cached: !!meta, meta });
+  } catch {
+    res.json({ cached: false, meta: null });
+  }
+});
+
+app.get('/api/energy/cache/full', async (_req, res) => {
+  try {
+    const row = await db.getEnergyCacheFull();
+    if (!row) return res.json({ cached: false });
+    res.json({
+      cached: true,
+      source: row.source,
+      label: row.label,
+      start: row.start_date,
+      end: row.end_date,
+      hoursCount: row.hours_count,
+      totalImportKwh: +row.total_import_kwh,
+      totalExportKwh: +row.total_export_kwh,
+      totalSolarKwh: +row.total_solar_kwh,
+      importedAt: row.imported_at,
+      hours: row.data,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/energy/cache', async (req, res) => {
+  const { source, label, start, end, hours } = req.body;
+  if (!hours?.length) return res.status(400).json({ error: 'hours array required' });
+  try {
+    await db.saveEnergyCache(source || 'influxdb', label || null, start, end, hours);
+    res.json({ ok: true, hoursCount: hours.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/energy/cache', async (_req, res) => {
+  try {
+    await db.clearEnergyCache();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /* ── Energy Made Easy Plan Import ── */
 app.get('/api/eme/plan', async (req, res) => {
   const { planId, postcode } = req.query;

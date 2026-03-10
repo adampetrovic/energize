@@ -22,6 +22,30 @@ const API = {
     return res.json();
   },
 
+  async getEnergyCache() {
+    const res = await fetch('/api/energy/cache');
+    return res.json();
+  },
+
+  async getEnergyCacheFull() {
+    const res = await fetch('/api/energy/cache/full');
+    return res.json();
+  },
+
+  async saveEnergyCache(source, label, start, end, hours) {
+    const res = await fetch('/api/energy/cache', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source, label, start, end, hours }),
+    });
+    return res.json();
+  },
+
+  async clearEnergyCache() {
+    const res = await fetch('/api/energy/cache', { method: 'DELETE' });
+    return res.json();
+  },
+
   async importEmePlan(planId, postcode) {
     const res = await fetch(`/api/eme/plan?planId=${encodeURIComponent(planId)}&postcode=${encodeURIComponent(postcode)}`);
     if (!res.ok) {
